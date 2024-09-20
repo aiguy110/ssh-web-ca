@@ -8,8 +8,8 @@ use ssh_key::certificate::Certificate;
 
 #[derive(Debug, FromRow)]
 pub struct User {
-    id: u64,
-    username: String,
+    pub id: i64,
+    pub username: String,
 }
 
 #[derive(Debug, FromRow)]

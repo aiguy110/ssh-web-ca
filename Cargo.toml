@@ -4,11 +4,12 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-axum = "0.7.5"
+axum = { version = "0.7.5" }
 axum-login = "0.16.0"
+dotenv = "0.15.0"
 samael = { version = "0.0.17", features = ["xmlsec"] }
 serde = "1.0.210"
-sqlx = {version = "0.8.2", features = ["sqlite"]}
+sqlx = { version = "0.8.2", features = ["sqlite", "runtime-tokio"] }
 ssh-key = { version = "0.6.6", features = ["crypto", "serde", "rsa"] }
-tokio = "1.40.0"
+tokio = { version = "1.40.0", features = ["rt-multi-thread"] }
 tracing = "0.1.40"
