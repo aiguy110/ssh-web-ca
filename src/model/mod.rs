@@ -1,10 +1,10 @@
-use serde::{Serialize, Deserialize};
 use sqlx::{
-    FromRow, Row,
-    sqlite::SqliteRow,
+    FromRow,
     types::Json,
 };
 use ssh_key::certificate::Certificate;
+
+pub mod controller;
 
 #[derive(Debug, FromRow)]
 pub struct User {
@@ -14,6 +14,15 @@ pub struct User {
 
 #[derive(Debug, FromRow)]
 pub struct Cert {
-    id: Option<u64>,
+    id: Option<i64>,
     inner: Json<Certificate>
+}
+
+impl Cert {
+    pub fn new(inner: Certificate) -> Self {
+        Cert {
+            id: None,
+            inner: Json(inner)
+        }
+    }
 }
