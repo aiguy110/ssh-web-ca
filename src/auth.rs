@@ -1,0 +1,3 @@
+struct Creds {
+    username: String,
+}

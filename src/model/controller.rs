@@ -1,4 +1,7 @@
+use axum::extract::FromRef;
 use sqlx::{query_as, query, SqlitePool};
+use crate::AppState;
+
 use super::*;
 
 #[derive(Debug)]
@@ -31,13 +34,20 @@ impl From<serde_json::Error> for Error {
 }
 
 
-pub struct Controller {
+#[derive(Clone, Debug)]
+pub struct ModelController {
     db: SqlitePool
 }
 
-impl Controller {
+impl FromRef<AppState> for ModelController {
+    fn from_ref(input: &AppState) -> Self {
+        input.model_controller.clone()
+    }
+}
+
+impl ModelController {
     pub fn new(db: SqlitePool) -> Self {
-        Controller { db }
+        ModelController { db }
     }
 
     pub async fn get_user_by_username(&self, username: &str) -> Result<Option<User>, Error> {
