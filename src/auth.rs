@@ -1,3 +1,0 @@
-struct Creds {
-    username: String,
-}

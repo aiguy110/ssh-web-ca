@@ -1,4 +1,6 @@
-use axum::extract::FromRef;
+use axum::{async_trait, extract::FromRef};
+use axum_login::{AuthnBackend, UserId};
+use samael::schema::Assertion;
 use sqlx::{query_as, query, SqlitePool};
 use crate::AppState;
 
@@ -7,7 +9,9 @@ use super::*;
 #[derive(Debug)]
 pub enum Error {
     SqlError(sqlx::Error),
-    SerdeJsonError(serde_json::Error)
+    SerdeJsonError(serde_json::Error),
+    FailedToRetrieveUsernameFromAssertion { assertion: Assertion },
+    UserIdMustBeNoneOnCreate,
 }
 
 impl std::fmt::Display for Error {
@@ -15,6 +19,8 @@ impl std::fmt::Display for Error {
         match self {
             Error::SqlError(error) => write!(f, "SqlError: {error}"),
             Error::SerdeJsonError(error) => write!(f, "SerdeJsonError: {error}"),
+            Error::FailedToRetrieveUsernameFromAssertion { assertion } => write!(f, "Failed to retrieve username from assertion: {assertion:?}"),
+            Error::UserIdMustBeNoneOnCreate => write!(f, "User.id must be None at user creation.")
         }
     }
 }
@@ -45,6 +51,37 @@ impl FromRef<AppState> for ModelController {
     }
 }
 
+#[async_trait]
+impl AuthnBackend for ModelController {
+    #[doc = " Authenticating user type."]
+    type User = User;
+
+    #[doc = " credential type used for authentication."]
+    type Credentials = samael::schema::Assertion;
+
+    #[doc = " An error which can occur during authentication and authorization."]
+    type Error = Error;
+
+    #[doc = " Authenticates the given credentials with the backend."]
+    async fn authenticate(&self, creds: Self::Credentials) -> Result<Option<Self::User>, Self::Error> {
+        // We don't validate the Assertion here because we will only ever get an assertion from
+        // ServiceProvider::parse_base64_assertion, which performs validation during parsing.
+        let username = creds.clone().subject
+            .ok_or_else(|| { Error::FailedToRetrieveUsernameFromAssertion {assertion: creds.clone()}})?
+            .name_id
+            .ok_or_else(|| { Error::FailedToRetrieveUsernameFromAssertion {assertion: creds}})?
+            .value;
+
+        let user = self.get_or_create_user_by_username(&username).await?;
+        Ok(Some(user))
+    }
+
+    #[doc = " Gets the user by provided ID from the backend."]
+    async fn get_user<>(&self, user_id: &UserId<Self>) ->  Result<Option<Self::User> ,Self::Error> {
+        self.get_user_by_id(*user_id).await
+    }
+}
+
 impl ModelController {
     pub fn new(db: SqlitePool) -> Self {
         ModelController { db }
@@ -53,6 +90,26 @@ impl ModelController {
     pub async fn get_user_by_username(&self, username: &str) -> Result<Option<User>, Error> {
         Ok(
             query_as!(User, "SELECT * FROM user WHERE username = ?", username)
+                .fetch_optional(&self.db)
+                .await?
+        )
+    }
+
+    pub async fn get_or_create_user_by_username(&self, username: &str) -> Result<User, Error> {
+        let fetched_user = self.get_user_by_username(username).await?;
+        match fetched_user {
+            Some(user) => Ok(user),
+            None => Ok(
+                query_as!(User, "INSERT INTO user (username) VALUES (?) RETURNING id, username", username)
+                    .fetch_one(&self.db)
+                    .await?
+            )
+        }
+    }
+
+    pub async fn get_user_by_id(&self, user_id: i64) -> Result<Option<User>, Error> {
+        Ok(
+            query_as!(User, "SELECT * FROM user WHERE id = ?", user_id)
                 .fetch_optional(&self.db)
                 .await?
         )

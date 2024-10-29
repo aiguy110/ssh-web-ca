@@ -1,2 +1,11 @@
-private_key_path: ./ca.key
-validity_period_secs: 86400 # One day
+saml_sp_config:
+  idp_metadata_url: http://localhost:8080/realms/my_saml_realm/protocol/saml/descriptor
+  idp_login_url: http://localhost:8080/realms/my_saml_realm/protocol/saml/clients/ssh_web_ca
+  sp_entity_id: ssh_web_ca
+  cert_path: saml_cert.cer
+  private_key_path: saml_cert.key
+  acs_url: http://localhost:8090/login
+ssh_ca_config:
+  private_key_path: ./ssh_ca.key
+  validity_period_secs: 86400 # 24h
+listen_sock_addr: 0.0.0.0:8090

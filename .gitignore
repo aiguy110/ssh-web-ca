@@ -1,3 +1,6 @@
 /target
 ssh-ca.db
 .env
+*.key
+*.pub
+*.cer
